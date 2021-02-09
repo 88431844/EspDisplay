@@ -19,14 +19,20 @@
 // SCK (CLK) ---> NodeMCU pin D5 (GPIO14)
 // MOSI(DIN) ---> NodeMCU pin D7 (GPIO13)
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
+
+//变量初始化
 WiFiManager wifiManager;
 float p = 3.1415926;
+int oldSeconds = 999;
+String oldTimeStr = "";
 
 //函数声明
 void tftPrintTest();
 void configModeCallback(WiFiManager *myWiFiManager);
 void webInit();
 void myMDNSinit();
+void displayWifiStatus(String wifiStatus);
+void updateTime();
 
 // 北京时间时区
 #define STD_TIMEZONE_OFFSET +8
@@ -47,6 +53,7 @@ void setup(void)
   tft.fillScreen(ST77XX_BLACK);
   delay(500);
   Serial.println(F("TFT init"));
+  displayWifiStatus("TFT init");
 
   wifiManager.setAPCallback(configModeCallback);
   if (!wifiManager.autoConnect("EspDisplay"))
@@ -57,21 +64,82 @@ void setup(void)
     delay(1000);
   }
   Serial.println("wifi connected success...");
+  displayWifiStatus("wifi connected success...");
+
   myMDNSinit();
   Serial.println("dns init...");
+  displayWifiStatus("dns init...");
 
   initNTP();
   Serial.println("ntp init...");
-
-  // tft print function!
-  // tftPrintTest();
-  delay(4000);
+  displayWifiStatus("ntp init...");
 }
 
 void loop()
 {
   MDNS.update();
   esp8266_server.handleClient(); // 处理http服务器访问
+  updateTime();
+}
+
+void configModeCallback(WiFiManager *myWiFiManager)
+{
+  Serial.println("check wifi connect and reset");
+}
+
+void myMDNSinit()
+{
+  // Set up mDNS responder:
+  // - first argument is the domain name, in this example
+  //   the fully-qualified domain name is "EPaperThing.local"
+  // - second argument is the IP address to advertise
+  //   we send our IP address on the WiFi network
+  if (!MDNS.begin("EspDisplay"))
+  {
+    Serial.println("Error setting up MDNS responder!");
+    while (1)
+    {
+      delay(1000);
+    }
+  }
+  Serial.println("mDNS responder started");
+  // Add service to MDNS-SD
+  MDNS.addService("http", "tcp", 80);
+}
+void handleRoot()
+{ //处理网站根目录“/”的访问请求
+  String content = "<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'></head><body><center><form action='TODO 'method='POST'><br>提醒事项：<input type='text'name='todo'value=''><br><br><br><input type='submit'value='更新提醒事项'></form><form action='CLEAR 'method='POST'><br><br><input type='submit'value='清屏'></form></center></body></html>";
+  esp8266_server.send(200, "text/html", content); // NodeMCU将调用此函数。访问成功返回200状态码，返回信息类型text/html
+}
+
+// 设置处理404情况的函数'handleNotFound'
+void handleNotFound()
+{                                                           // 当浏览器请求的网络资源无法在服务器找到时，返回404状态码，和提升信息类型和内容
+  esp8266_server.send(404, "text/plain", "404: Not found"); // NodeMCU将调用此函数。
+}
+void webInit()
+{
+  //--------"启动网络服务功能"程序部分开始--------
+  esp8266_server.begin();
+  esp8266_server.on("/", HTTP_GET, handleRoot); //访问网站的根目录 处理GET请求 执行handleRoot函数
+  esp8266_server.onNotFound(handleNotFound);    //当请求服务器找不到时，执行handleNotFound函数
+  //--------"启动网络服务功能"程序部分结束--------
+  Serial.println("HTTP esp8266_server started"); //  告知用户ESP8266网络服务功能已经启动
+}
+
+void displayWifiStatus(String wifiStatus)
+{
+  tft.fillScreen(ST77XX_BLACK);
+  tft.setCursor(120, 120);
+  tft.setTextSize(2);
+  tft.setTextColor(ST77XX_WHITE);
+  tft.println(wifiStatus);
+  delay(500);
+  tft.fillScreen(ST77XX_BLACK);
+}
+
+void updateTime()
+{
 
   TimeChangeRule *tcr; // Pointer to the time change rule
 
@@ -143,81 +211,28 @@ void loop()
   String myTime = h + ":" + m + " " + s;
   String myDate = mm + "月" + dd + "日";
   String myWeek = w.substring(0, 3);
-  Serial.println("-----------------");
-  Serial.println("myTime: " + myTime);
-  Serial.println("myDate: " + myDate);
-  Serial.println("myWeek: " + myWeek);
 
-  tft.fillScreen(ST77XX_BLACK);
-  tft.setCursor(0, 30);
-  tft.setTextColor(ST77XX_GREEN);
-  tft.setTextSize(3);
-  tft.print(myTime);
-  tft.setTextWrap(true);
-  delay(1000);
-}
-
-// void tftPrintTest()
-// {
-//   tft.setTextWrap(false);
-//   tft.fillScreen(ST77XX_BLACK);
-//   tft.setCursor(0, 30);
-//   tft.setTextColor(ST77XX_RED);
-//   tft.setTextSize(1);
-//   tft.println("Hello World!");
-//   tft.setTextColor(ST77XX_YELLOW);
-//   tft.setTextSize(2);
-//   tft.println("Hello World!");
-//   tft.setTextColor(ST77XX_GREEN);
-//   tft.setTextSize(3);
-//   tft.println("Hello World!");
-//   tft.setTextColor(ST77XX_BLUE);
-//   tft.setTextSize(4);
-//   tft.print(1234.567);
-//   tft.fillScreen(ST77XX_BLACK);
-// }
-
-void configModeCallback(WiFiManager *myWiFiManager)
-{
-  Serial.println("check wifi connect and reset");
-}
-
-void myMDNSinit()
-{
-  // Set up mDNS responder:
-  // - first argument is the domain name, in this example
-  //   the fully-qualified domain name is "EPaperThing.local"
-  // - second argument is the IP address to advertise
-  //   we send our IP address on the WiFi network
-  if (!MDNS.begin("EspDisplay"))
+  if (oldSeconds != seconds)
   {
-    Serial.println("Error setting up MDNS responder!");
-    while (1)
-    {
-      delay(1000);
-    }
-  }
-  Serial.println("mDNS responder started");
-  // Add service to MDNS-SD
-  MDNS.addService("http", "tcp", 80);
-}
-void handleRoot()
-{ //处理网站根目录“/”的访问请求
-  String content = "<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'></head><body><center><form action='TODO 'method='POST'><br>提醒事项：<input type='text'name='todo'value=''><br><br><br><input type='submit'value='更新提醒事项'></form><form action='CLEAR 'method='POST'><br><br><input type='submit'value='清屏'></form></center></body></html>";
-  esp8266_server.send(200, "text/html", content); // NodeMCU将调用此函数。访问成功返回200状态码，返回信息类型text/html
-}
 
-// 设置处理404情况的函数'handleNotFound'
-void handleNotFound()
-{                                                           // 当浏览器请求的网络资源无法在服务器找到时，返回404状态码，和提升信息类型和内容
-  esp8266_server.send(404, "text/plain", "404: Not found"); // NodeMCU将调用此函数。
-}
-void webInit()
-{
-  //--------"启动网络服务功能"程序部分开始--------
-  esp8266_server.begin();
-  esp8266_server.on("/", HTTP_GET, handleRoot); //访问网站的根目录 处理GET请求 执行handleRoot函数
-  esp8266_server.onNotFound(handleNotFound);    //当请求服务器找不到时，执行handleNotFound函数
-  //--------"启动网络服务功能"程序部分结束--------
-  Serial.println("HTTP esp8266_server started"); //  告知用户ESP8266网络服务功能已经启动
+    Serial.println("-----------------");
+    Serial.println("myTime: " + myTime);
+    Serial.println("myDate: " + myDate);
+    Serial.println("myWeek: " + myWeek);
+
+    tft.setTextWrap(false);
+    tft.setCursor(0, 0);
+    tft.setTextColor(ST77XX_BLACK);
+    tft.setTextSize(3);
+    //擦除上次时间
+    tft.print(oldTimeStr);
+    //显示本次应该显示时间
+    tft.setCursor(0, 0);
+    tft.setTextColor(ST77XX_GREEN);
+    tft.setTextSize(3);
+    tft.print(myTime);
+
+    oldTimeStr = myTime;
+    oldSeconds = seconds;
+  }
 }
