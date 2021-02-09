@@ -31,7 +31,7 @@ void tftPrintTest();
 void configModeCallback(WiFiManager *myWiFiManager);
 void webInit();
 void myMDNSinit();
-void displayWifiStatus(String wifiStatus);
+void displayMsg(String wifiStatus);
 void updateTime();
 
 // 北京时间时区
@@ -53,7 +53,7 @@ void setup(void)
   tft.fillScreen(ST77XX_BLACK);
   delay(500);
   Serial.println(F("TFT init"));
-  displayWifiStatus("TFT init");
+  displayMsg("TFT init");
 
   wifiManager.setAPCallback(configModeCallback);
   if (!wifiManager.autoConnect("EspDisplay"))
@@ -64,19 +64,24 @@ void setup(void)
     delay(1000);
   }
   Serial.println("wifi connected success...");
-  displayWifiStatus("wifi connected success...");
+  displayMsg("wifi connected success...");
 
   myMDNSinit();
   Serial.println("dns init...");
-  displayWifiStatus("dns init...");
+  displayMsg("dns init...");
 
   initNTP();
   Serial.println("ntp init...");
-  displayWifiStatus("ntp init...");
+  displayMsg("ntp init...");
+
+  webInit();
+  Serial.println("web init...");
+  displayMsg("web init...");
 }
 
 void loop()
 {
+
   MDNS.update();
   esp8266_server.handleClient(); // 处理http服务器访问
   updateTime();
@@ -84,7 +89,8 @@ void loop()
 
 void configModeCallback(WiFiManager *myWiFiManager)
 {
-  Serial.println("check wifi connect and reset");
+  Serial.println("wifi connect fail");
+  displayMsg("wifi connect fail");
 }
 
 void myMDNSinit()
@@ -102,13 +108,14 @@ void myMDNSinit()
       delay(1000);
     }
   }
-  Serial.println("mDNS responder started");
+  Serial.println("mdns started");
+  displayMsg("mdns started");
   // Add service to MDNS-SD
   MDNS.addService("http", "tcp", 80);
 }
 void handleRoot()
 { //处理网站根目录“/”的访问请求
-  String content = "<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'></head><body><center><form action='TODO 'method='POST'><br>提醒事项：<input type='text'name='todo'value=''><br><br><br><input type='submit'value='更新提醒事项'></form><form action='CLEAR 'method='POST'><br><br><input type='submit'value='清屏'></form></center></body></html>";
+  String content = "<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'></head><body><center><br>ESPDisplay alive！！</center></body></html>";
   esp8266_server.send(200, "text/html", content); // NodeMCU将调用此函数。访问成功返回200状态码，返回信息类型text/html
 }
 
@@ -127,13 +134,13 @@ void webInit()
   Serial.println("HTTP esp8266_server started"); //  告知用户ESP8266网络服务功能已经启动
 }
 
-void displayWifiStatus(String wifiStatus)
+void displayMsg(String msg)
 {
   tft.fillScreen(ST77XX_BLACK);
-  tft.setCursor(120, 120);
+  tft.setCursor(60, 120);
   tft.setTextSize(2);
   tft.setTextColor(ST77XX_WHITE);
-  tft.println(wifiStatus);
+  tft.println(msg);
   delay(500);
   tft.fillScreen(ST77XX_BLACK);
 }
