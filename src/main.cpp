@@ -16,8 +16,8 @@
 #define TFT_RST 16 // TFT RST pin is connected to NodeMCU pin D0 (GPIO16)
 #define TFT_CS 15  // TFT CS  pin is connected to NodeMCU pin D8 (GPIO15)
 // initialize ST7789 TFT library with hardware SPI module
-// SCK (CLK) ---> NodeMCU pin D5 (GPIO14)
-// MOSI(DIN) ---> NodeMCU pin D7 (GPIO13)
+// SCK (CLK/SCK) ---> NodeMCU pin D5 (GPIO14)
+// MOSI(DIN/SDA) ---> NodeMCU pin D7 (GPIO13)
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 
 //变量初始化
@@ -31,7 +31,7 @@ void tftPrintTest();
 void configModeCallback(WiFiManager *myWiFiManager);
 void webInit();
 void myMDNSinit();
-void displayMsg(String wifiStatus);
+void displayMsg(String wifiStatus,bool isClear);
 void updateTime();
 
 // 北京时间时区
@@ -53,7 +53,7 @@ void setup(void)
   tft.fillScreen(ST77XX_BLACK);
   delay(500);
   Serial.println(F("TFT init"));
-  displayMsg("TFT init");
+  displayMsg("TFT init",true);
 
   wifiManager.setAPCallback(configModeCallback);
   if (!wifiManager.autoConnect("EspDisplay"))
@@ -64,24 +64,23 @@ void setup(void)
     delay(1000);
   }
   Serial.println("wifi connected success...");
-  displayMsg("wifi connected success...");
+  displayMsg("wifi connected success...",true);
 
   myMDNSinit();
   Serial.println("dns init...");
-  displayMsg("dns init...");
+  displayMsg("dns init...",true);
 
   initNTP();
   Serial.println("ntp init...");
-  displayMsg("ntp init...");
+  displayMsg("ntp init...",true);
 
   webInit();
   Serial.println("web init...");
-  displayMsg("web init...");
+  displayMsg("web init...",true);
 }
 
 void loop()
 {
-
   MDNS.update();
   esp8266_server.handleClient(); // 处理http服务器访问
   updateTime();
@@ -90,7 +89,7 @@ void loop()
 void configModeCallback(WiFiManager *myWiFiManager)
 {
   Serial.println("wifi connect fail");
-  displayMsg("wifi connect fail");
+  displayMsg("wifi connect fail",false);
 }
 
 void myMDNSinit()
@@ -109,7 +108,7 @@ void myMDNSinit()
     }
   }
   Serial.println("mdns started");
-  displayMsg("mdns started");
+  displayMsg("mdns started",true);
   // Add service to MDNS-SD
   MDNS.addService("http", "tcp", 80);
 }
@@ -134,7 +133,7 @@ void webInit()
   Serial.println("HTTP esp8266_server started"); //  告知用户ESP8266网络服务功能已经启动
 }
 
-void displayMsg(String msg)
+void displayMsg(String msg,bool isClear)
 {
   tft.fillScreen(ST77XX_BLACK);
   tft.setCursor(60, 120);
@@ -142,7 +141,10 @@ void displayMsg(String msg)
   tft.setTextColor(ST77XX_WHITE);
   tft.println(msg);
   delay(500);
-  tft.fillScreen(ST77XX_BLACK);
+  if (isClear)
+  {
+    tft.fillScreen(ST77XX_BLACK);
+  }
 }
 
 void updateTime()
