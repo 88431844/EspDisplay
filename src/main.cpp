@@ -23,7 +23,7 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 //变量初始化
 WiFiManager wifiManager;
 float p = 3.1415926;
-int oldSeconds = 999;
+int oldMinutes = 999;
 String oldTimeStr = "";
 
 //函数声明
@@ -31,7 +31,7 @@ void tftPrintTest();
 void configModeCallback(WiFiManager *myWiFiManager);
 void webInit();
 void myMDNSinit();
-void displayMsg(String wifiStatus,bool isClear);
+void displayMsg(String wifiStatus, bool isClear);
 void updateTime();
 
 // 北京时间时区
@@ -53,7 +53,7 @@ void setup(void)
   tft.fillScreen(ST77XX_BLACK);
   delay(500);
   Serial.println(F("TFT init"));
-  displayMsg("TFT init",true);
+  displayMsg("TFT init", true);
 
   wifiManager.setAPCallback(configModeCallback);
   if (!wifiManager.autoConnect("EspDisplay"))
@@ -64,19 +64,19 @@ void setup(void)
     delay(1000);
   }
   Serial.println("wifi connected success...");
-  displayMsg("wifi connected success...",true);
+  displayMsg("wifi connected success...", true);
 
   myMDNSinit();
   Serial.println("dns init...");
-  displayMsg("dns init...",true);
+  displayMsg("dns init...", true);
 
   initNTP();
   Serial.println("ntp init...");
-  displayMsg("ntp init...",true);
+  displayMsg("ntp init...", true);
 
   webInit();
   Serial.println("web init...");
-  displayMsg("web init...",true);
+  displayMsg("web init...", true);
 }
 
 void loop()
@@ -89,7 +89,7 @@ void loop()
 void configModeCallback(WiFiManager *myWiFiManager)
 {
   Serial.println("wifi connect fail");
-  displayMsg("wifi connect fail",false);
+  displayMsg("wifi connect fail", false);
 }
 
 void myMDNSinit()
@@ -108,7 +108,7 @@ void myMDNSinit()
     }
   }
   Serial.println("mdns started");
-  displayMsg("mdns started",true);
+  displayMsg("mdns started", true);
   // Add service to MDNS-SD
   MDNS.addService("http", "tcp", 80);
 }
@@ -133,7 +133,7 @@ void webInit()
   Serial.println("HTTP esp8266_server started"); //  告知用户ESP8266网络服务功能已经启动
 }
 
-void displayMsg(String msg,bool isClear)
+void displayMsg(String msg, bool isClear)
 {
   tft.fillScreen(ST77XX_BLACK);
   tft.setCursor(60, 120);
@@ -217,11 +217,11 @@ void updateTime()
   {
     dd = String(days);
   }
-  String myTime = h + ":" + m + " " + s;
+  String myTime = h + ":" + m;
   String myDate = mm + "月" + dd + "日";
   String myWeek = w.substring(0, 3);
 
-  if (oldSeconds != seconds)
+  if (oldMinutes != minutes)
   {
 
     Serial.println("-----------------");
@@ -241,7 +241,13 @@ void updateTime()
     tft.setTextSize(3);
     tft.print(myTime);
 
+    // tft.setCursor(0, 30);
+    // tft.print(myDate);
+
+    tft.setCursor(0, 60);
+    tft.print(myWeek);
+
     oldTimeStr = myTime;
-    oldSeconds = seconds;
+    oldMinutes = minutes;
   }
 }
